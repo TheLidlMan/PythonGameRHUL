@@ -1,74 +1,165 @@
 import simplegui
+from collections import deque
 import random
 
-# Game dimensions
-CANVAS_WIDTH = 800
-CANVAS_HEIGHT = 600
+class Spritesheet:
+    def __init__(self, rows, cols, frame_duration, num_frames):
+        # Added num_frames as arg
+        self.image = simplegui.load_image("https://i.ibb.co/gvrrbWW/Screenshot-2024-02-17-at-3-30-06-pm.png")
+        if self.image.get_width() <= 0 or self.image.get_height() <= 0:
+            raise ValueError("Image dimensions must be > 0")
+        self.rows = rows
+        self.cols = cols
+        self.width = self.image.get_width() // self.cols
+        self.height = self.image.get_height() // self.rows
+        self.center_x = self.width // 2
+        self.center_y = self.height // 2
+        # Put num_frames in as variable
+        self.queue = [(i % self.cols, i // self.cols) for i in range(num_frames)]
+        self.frame_num = 0
+        self.frame_duration = frame_duration
+        self.clock = Clock(frame_duration)
+        self.pos = (500, 500)  # Initial position of the sprite
+        self.move_left = False
+        self.move_right = False
+        self.move_up = False
+        self.move_down = False
+    
+    def done(self): # return boolean if last frame reached
+        return False
+    
+    def draw(self, canvas): # Remove pos arg for position
+        current_frame = self.queue[self.frame_num]
+        canvas.draw_image(self.image,
+                          (self.center_x + current_frame[0] * self.width,
+                           self.center_y + current_frame[1] * self.height),
+                          (self.width, self.height),
+                          self.pos, # draw at the provided pos
+                          (self.width, self.height))
+    
+    def update(self):
+        # checks if condition met to move to next frame based on frame duration
+        if self.clock.tick() and not self.done():
+            # increments in order to move to next frame
+            self.frame_num = (self.frame_num + 1) % len(self.queue)
+        
+        # Update position based on movement flags
+        if self.move_left:
+            self.left(1)
+        if self.move_right:
+            self.right(1)
+        if self.move_up:
+            self.up(1)
+        if self.move_down:
+            self.down(1)
+    
+    def left(self, distance):
+        x, y = self.pos
+        self.pos = (x - distance, y)
+    
+    def right(self, distance):
+        x, y = self.pos
+        self.pos = (x + distance, y)
+    
+    def up(self, distance):
+        x, y = self.pos
+        self.pos = (x, y - distance)
+    
+    def down(self, distance):
+        x, y = self.pos
+        self.pos = (x, y + distance)
 
-# Player spaceship properties
-SPACESHIP_CENTER = (CANVAS_WIDTH // 2, CANVAS_HEIGHT - 30)
-SPACESHIP_RADIUS = 30
-SPACESHIP_VELOCITY = 3
-SPACESHIP_ANGLE = 0
-SPACESHIP_IMAGE = None
+class Clock:
+    def __init__(self, frame_duration):
+        self.time = 0
+        self.frame_duration = frame_duration
+    
+    def tick(self):
+        self.time += 1
+        return self.time % self.frame_duration == 0
+    
+    def transition(self, frame_duration):
+        return self.time % frame_duration == 0
 
-# Projectiles (bullets) properties
-PROJECTILE_RADIUS = 5
-PROJECTILE_VELOCITY = 10
-PROJECTILE_LIFETIME = 60
+def draw_handler(canvas):
+    canvas.draw_polygon([(0, 0), (1000, 0), (1000, 1000), (0, 1000)], 1, '#081830', '#081830')
+    run.update()
+    run.draw(canvas)
 
-# Enemies (asteroids) properties
-ENEMY_RADIUS = 20
-ENEMY_VELOCITY = 2
-ENEMY_SPAWN_RATE = 30
+def keydown_handler(key):
+    if key == simplegui.KEY_MAP['left']:
+        run.move_left = True
+    elif key == simplegui.KEY_MAP['right']:
+        run.move_right = True
+    elif key == simplegui.KEY_MAP['up']:
+        run.move_up = True
+    elif key == simplegui.KEY_MAP['down']:
+        run.move_down = True
 
-# Game state variables
-score = 0
-lives = 3
-game_over = False
+def keyup_handler(key):
+    if key == simplegui.KEY_MAP['left']:
+        run.move_left = False
+    elif key == simplegui.KEY_MAP['right']:
+        run.move_right = False
+    elif key == simplegui.KEY_MAP['up']:
+        run.move_up = False
+    elif key == simplegui.KEY_MAP['down']:
+        run.move_down = False
 
-def load_assets():
-    global SPACESHIP_IMAGE
+def draw_handler(canvas):
+    # Draw background
+    canvas.draw_polygon([(0, 0), (1000, 0), (1000, 1000), (0, 1000)], 1, '#081830', '#081830')
+    
+    # Draw stars
+    for star in stars:
+        star.draw(canvas)
+    
+    # Update and draw the sprite
+    run.update()
+    run.draw(canvas)
 
-    # Replace with your desired image path
-    SPACESHIP_IMAGE = simplegui.load_image("spaceship.png")
+class Star:
+    def __init__(self, pos, radius, color):
+        self.pos = pos
+        self.radius = radius
+        self.color = color
+        self.alpha = 0
+        self.fade_in = True
+    
+    def update(self):
+        if self.fade_in:
+            self.alpha += 5
+            if self.alpha >= 255:
+                self.alpha = 255
+                self.fade_in = False
+        else:
+            self.alpha -= 5
+            if self.alpha <= 0:
+                self.alpha = 0
+                self.fade_in = True
+    
+    def draw(self, canvas):
+        canvas.draw_circle(self.pos, self.radius, 1, self.color, f'rgba(255, 255, 255, {self.alpha / 255})')
 
-def draw(canvas):
-    global score, lives, game_over, SPACESHIP_CENTER, SPACESHIP_ANGLE
+# Create a list to store the stars
+stars = []
 
-    # Clear the canvas
-    canvas.draw_rectangle((0, 0), (CANVAS_WIDTH, CANVAS_HEIGHT), "black")
+# Generate random stars
+for _ in range(100):
+    x = random.randint(0, 1000)
+    y = random.randint(0, 1000)
+    radius = random.randint(1, 3)
+    color = random.choice(['#FFFFFF', '#FFFFCC', '#FFFF99'])
+    star = Star((x, y), radius, color)
+    stars.append(star)
 
-    # Draw score and lives
-    canvas.draw_text("Score: " + str(score), (10, 20), 20, "white")
-    canvas.draw_text("Lives: " + str(lives), (CANVAS_WIDTH - 60, 20), 20, "white")
 
-    # Draw the spaceship
-    canvas.draw_image(SPACESHIP_IMAGE, SPACESHIP_CENTER, SPACESHIP_ANGLE,
-                      2 * SPACESHIP_RADIUS, 2 * SPACESHIP_RADIUS)
-
-def input_handler(event):
-    global SPACESHIP_ANGLE
-
-    if event.key == simplegui.KEY_LEFT:
-        SPACESHIP_ANGLE -= 0.1
-    elif event.key == simplegui.KEY_RIGHT:
-        SPACESHIP_ANGLE += 0.1
-    elif event.key == simplegui.KEY_SPACE:
-        # Fire a projectile
-        # ... (Add logic to create and track projectiles here)
-
-    def tick():
-        global SPACESHIP_CENTER, SPACESHIP_VELOCITY, ENEMY_SPAWN_RATE
-
-# Initialize game
-load_assets()
-
-# Register event handlers
-frame = simplegui.create_frame("Space Shooter", CANVAS_WIDTH, CANVAS_HEIGHT)
-frame.set_draw_handler(draw)
-frame.set_keydown_handler(input_handler)
-frame.set_timer_handler(tick, 100)  # Update every 100 milliseconds
-
-# Start the game
+# the columns and rows of the img
+run = Spritesheet(1, 6, 10, 6) # Adjust speed here and num of frames now
+width = run.width
+height = run.height
+frame = simplegui.create_frame("Spritesheet", 1000, 1000)
+frame.set_draw_handler(draw_handler)
+frame.set_keydown_handler(keydown_handler)  # Add keydown handler
+frame.set_keyup_handler(keyup_handler)  # Add keyup handler
 frame.start()
