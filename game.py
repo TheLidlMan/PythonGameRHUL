@@ -1,11 +1,11 @@
-import simplegui
+import PySimpleGUI
 from collections import deque
 import random
 
 class Spritesheet:
     def __init__(self, rows, cols, frame_duration, num_frames):
         # Added num_frames as arg
-        self.image = simplegui.load_image("https://i.ibb.co/gvrrbWW/Screenshot-2024-02-17-at-3-30-06-pm.png")
+        self.image = PySimpleGUI.load_image("https://i.ibb.co/gvrrbWW/Screenshot-2024-02-17-at-3-30-06-pm.png")
         if self.image.get_width() <= 0 or self.image.get_height() <= 0:
             raise ValueError("Image dimensions must be > 0")
         self.rows = rows
@@ -28,13 +28,22 @@ class Spritesheet:
     def done(self): # return boolean if last frame reached
         return False
     
-    def draw(self, canvas): # Remove pos arg for position
+    def draw(self, canvas):
         current_frame = self.queue[self.frame_num]
+        orientation = 0  # Default orientation (upwards)
+        
+        if self.move_left:
+            orientation = 1  # Left orientation
+        elif self.move_right:
+            orientation = 2  # Right orientation
+        elif self.move_down:
+            orientation = 3  # Down orientation
+        
         canvas.draw_image(self.image,
-                          (self.center_x + current_frame[0] * self.width,
+                          (self.center_x + current_frame[0] * self.width + orientation * self.width,
                            self.center_y + current_frame[1] * self.height),
                           (self.width, self.height),
-                          self.pos, # draw at the provided pos
+                          self.pos,
                           (self.width, self.height))
     
     def update(self):
@@ -87,23 +96,23 @@ def draw_handler(canvas):
     run.draw(canvas)
 
 def keydown_handler(key):
-    if key == simplegui.KEY_MAP['left']:
+    if key == PySimpleGUI.KEY_MAP['left']:
         run.move_left = True
-    elif key == simplegui.KEY_MAP['right']:
+    elif key == PySimpleGUI.KEY_MAP['right']:
         run.move_right = True
-    elif key == simplegui.KEY_MAP['up']:
+    elif key == PySimpleGUI.KEY_MAP['up']:
         run.move_up = True
-    elif key == simplegui.KEY_MAP['down']:
+    elif key == PySimpleGUI.KEY_MAP['down']:
         run.move_down = True
 
 def keyup_handler(key):
-    if key == simplegui.KEY_MAP['left']:
+    if key == PySimpleGUI.KEY_MAP['left']:
         run.move_left = False
-    elif key == simplegui.KEY_MAP['right']:
+    elif key == PySimpleGUI.KEY_MAP['right']:
         run.move_right = False
-    elif key == simplegui.KEY_MAP['up']:
+    elif key == PySimpleGUI.KEY_MAP['up']:
         run.move_up = False
-    elif key == simplegui.KEY_MAP['down']:
+    elif key == PySimpleGUI.KEY_MAP['down']:
         run.move_down = False
 
 def draw_handler(canvas):
@@ -158,7 +167,7 @@ for _ in range(100):
 run = Spritesheet(1, 6, 10, 6) # Adjust speed here and num of frames now
 width = run.width
 height = run.height
-frame = simplegui.create_frame("Spritesheet", 1000, 1000)
+frame = PySimpleGUI.create_frame("Spritesheet", 1000, 1000)
 frame.set_draw_handler(draw_handler)
 frame.set_keydown_handler(keydown_handler)  # Add keydown handler
 frame.set_keyup_handler(keyup_handler)  # Add keyup handler
